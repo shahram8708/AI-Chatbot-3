@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot 3</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .chatbox {
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            overflow-y: scroll;
+            max-height: 400px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            height: 80vh;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .chatbox p {
+            margin: 5px 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .user {
+            text-align: right;
+            color: #007bff;
+            margin: 5px 10px;
+        }
+
+        .bot {
+            text-align: left;
+            color: #28a745;
+            margin: 5px 10px;
+        }
+
+        .timestamp {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .timestamps {
+            font-size: 12px;
+            color: #888;
+            text-align: right;
+            display: block;
+            margin-top: -10px;
+        }
+
+        #user_input_form {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        input[type="text"] {
+            width: calc(100% - 80px);
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 30px;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        button[type="submit"] {
+            padding: 12px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+
+        button[type="submit"] svg {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 style="text-align: center; color: #333;">AI Chatbot 3</h1>
+        <div class="chatbox" id="chatbox"></div>
+        <form id="user_input_form" action="/chat" method="post">
+            <input type="text" id="user_input" name="user_input" autocomplete="off" placeholder="Type your message...">
+            <button type="submit">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="20">
+                    <path fill="currentColor"
+                        d="M21.707 3.293a1 1 0 0 0-1.414 0L2.293 20.293a1 1 0 0 0 1.414 1.414L9 15.414V21a1 1 0 0 0 2 0v-8.586l4.293 4.293a1 1 0 1 0 1.414-1.414L10.414 14H16a1 1 0 0 0 0-2h-6.586l5.293-5.293a1 1 0 0 0 0-1.414z">
+                    </path>
+                </svg>
+            </button>
+        </form>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            if (localStorage.getItem("chatHistory")) {
+                document.getElementById("chatbox").innerHTML = localStorage.getItem("chatHistory");
+            } else {
+                var botTime = new Date().toLocaleString();
+                document.getElementById("chatbox").innerHTML = "<p class='bot'>Welcome! How can I assist you today?</p><p class='timestamp'>" + botTime + "</p>";
+            }
+
+            document.getElementById("chatbox").scrollTop = document.getElementById("chatbox").scrollHeight;
+        });
+
+        document.getElementById("user_input_form").onsubmit = function (event) {
+            event.preventDefault();
+            var user_input = document.getElementById("user_input").value;
+            var currentTime = new Date().toLocaleString();
+            var chatbox = document.getElementById("chatbox");
+
+            chatbox.innerHTML += "<p class='user'>You: " + user_input + "</p><p class='timestamps'>" + currentTime + "</p>";
+
+            document.getElementById("user_input").value = "";
+
+            localStorage.setItem("chatHistory", chatbox.innerHTML);
+
+            fetch("/chat", {
+                method: "POST",
+                body: new URLSearchParams({
+                    "user_input": user_input
+                }),
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                }
+            })
+                .then(response => response.text())
+                .then(data => {
+                    var botTime = new Date().toLocaleString();
+                    chatbox.innerHTML += "<p class='bot'>Chatbot: " + data + "</p><p class='timestamp'>" + botTime + "</p>";
+
+                    chatbox.scrollTop = chatbox.scrollHeight;
+
+                    localStorage.setItem("chatHistory", chatbox.innerHTML);
+                });
+        };
+    </script>
+</body>
+
+</html>
