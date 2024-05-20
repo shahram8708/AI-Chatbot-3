@@ -42,6 +42,7 @@
             margin: 5px 0;
             font-size: 14px;
             line-height: 1.5;
+            position: relative;
         }
 
         .user {
@@ -71,9 +72,16 @@
 
         #user_input_form {
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             margin-top: 20px;
+        }
+
+        #reply_info {
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #555;
         }
 
         input[type="text"] {
@@ -100,6 +108,51 @@
         button[type="submit"] svg {
             margin-right: 5px;
         }
+
+        .dots {
+            cursor: pointer;
+            display: inline-block;
+            padding: 0 10px;
+            color: black;
+            font-size: 20px;
+        }
+
+
+        .options {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            z-index: 1;
+        }
+
+        .options button {
+            border: none;
+            background: none;
+            padding: 10px;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+        }
+
+        .options button:hover {
+            background-color: #f0f0f0;
+        }
+
+        .delete-chat {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color: #dc3545;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: block;
+            width: 100%;
+            text-align: center;
+        }
     </style>
 </head>
 
@@ -108,15 +161,23 @@
         <h1 style="text-align: center; color: #333;">AI Chatbot 3</h1>
         <div class="chatbox" id="chatbox"></div>
         <form id="user_input_form" action="/chat" method="post">
-            <input type="text" id="user_input" name="user_input" autocomplete="off" placeholder="Type your message...">
-            <button type="submit">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="20">
-                    <path fill="currentColor"
-                        d="M21.707 3.293a1 1 0 0 0-1.414 0L2.293 20.293a1 1 0 0 0 1.414 1.414L9 15.414V21a1 1 0 0 0 2 0v-8.586l4.293 4.293a1 1 0 1 0 1.414-1.414L10.414 14H16a1 1 0 0 0 0-2h-6.586l5.293-5.293a1 1 0 0 0 0-1.414z">
-                    </path>
-                </svg>
-            </button>
+            <div id="reply_info" style="display: none;"></div>
+            <input type="hidden" id="reply_input" name="reply_input">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 5px;">
+                <input type="text" id="user_input" name="user_input" autocomplete="off"
+                    placeholder="Type your message..."
+                    style="flex-grow: 1; margin-right: 10px; padding: 10px; border-radius: 20px; border: 1px solid #ccc;">
+                <button type="submit"
+                    style="background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="20">
+                        <path fill="currentColor"
+                            d="M21.707 3.293a1 1 0 0 0-1.414 0L2.293 20.293a1 1 0 0 0 1.414 1.414L9 15.414V21a1 1 0 0 0 2 0v-8.586l4.293 4.293a1 1 0 1 0 1.414-1.414L10.414 14H16a1 1 0 0 0 0-2h-6.586l5.293-5.293a1 1 0 0 0 0-1.414z">
+                        </path>
+                    </svg>
+                </button>
+            </div>
         </form>
+        <button class="delete-chat" onclick="clearChat()">Delete All Chat</button>
     </div>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
@@ -128,24 +189,35 @@
             }
 
             document.getElementById("chatbox").scrollTop = document.getElementById("chatbox").scrollHeight;
+
+            document.querySelectorAll('.dots').forEach(dot => {
+                dot.addEventListener('click', function () {
+                    this.nextElementSibling.style.display = 'block';
+                });
+            });
         });
 
         document.getElementById("user_input_form").onsubmit = function (event) {
             event.preventDefault();
             var user_input = document.getElementById("user_input").value;
+            var reply_input = document.getElementById("reply_input").value;
             var currentTime = new Date().toLocaleString();
             var chatbox = document.getElementById("chatbox");
 
-            chatbox.innerHTML += "<p class='user'>You: " + user_input + "</p><p class='timestamps'>" + currentTime + "</p>";
+            var combined_input = reply_input ? reply_input + " " + user_input : user_input;
+
+            chatbox.innerHTML += "<p class='user'>You: " + user_input + "<span class='dots'>...</span><span class='options'><button onclick='replyMessage(this)'>Reply</button><button onclick='deleteMessage(this)'>Delete</button></span></p><p class='timestamps'>" + currentTime + "</p>";
 
             document.getElementById("user_input").value = "";
+            document.getElementById("reply_input").value = "";
+            document.getElementById("reply_info").style.display = "none";
 
             localStorage.setItem("chatHistory", chatbox.innerHTML);
 
             fetch("/chat", {
                 method: "POST",
                 body: new URLSearchParams({
-                    "user_input": user_input
+                    "user_input": combined_input
                 }),
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded"
@@ -154,13 +226,45 @@
                 .then(response => response.text())
                 .then(data => {
                     var botTime = new Date().toLocaleString();
-                    chatbox.innerHTML += "<p class='bot'>Chatbot: " + data + "</p><p class='timestamp'>" + botTime + "</p>";
+                    chatbox.innerHTML += "<p class='bot'>Chatbot: " + data + "<span class='dots'>...</span><span class='options'><button onclick='deleteMessage(this)'>Delete</button></span></p><p class='timestamp'>" + botTime + "</p>";
 
                     chatbox.scrollTop = chatbox.scrollHeight;
 
                     localStorage.setItem("chatHistory", chatbox.innerHTML);
+
+                    document.querySelectorAll('.dots').forEach(dot => {
+                        dot.addEventListener('click', function () {
+                            var optionsMenu = this.nextElementSibling;
+                            if (optionsMenu.style.display === 'block') {
+                                optionsMenu.style.display = 'none';
+                            } else {
+                                optionsMenu.style.display = 'block';
+                            }
+                        });
+                    });
+
                 });
         };
+
+        function replyMessage(element) {
+            var message = element.parentElement.parentElement.textContent.replace('You: ', '').replace('...', '').replace('ReplyDelete', '').trim();
+            document.getElementById('reply_input').value = message;
+            document.getElementById('reply_info').textContent = "Replying to: " + message;
+            document.getElementById('reply_info').style.display = "block";
+            element.parentElement.style.display = 'none';
+        }
+
+        function deleteMessage(element) {
+            var messageElement = element.parentElement.parentElement;
+            messageElement.nextElementSibling.remove();
+            messageElement.remove();
+            localStorage.setItem("chatHistory", document.getElementById("chatbox").innerHTML);
+        }
+
+        function clearChat() {
+            document.getElementById("chatbox").innerHTML = "<p class='bot'>Welcome! How can I assist you today?</p><p class='timestamp'>" + new Date().toLocaleString() + "</p>";
+            localStorage.removeItem("chatHistory");
+        }
     </script>
 </body>
 
