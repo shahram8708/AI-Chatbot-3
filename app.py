@@ -18,7 +18,7 @@ patterns_responses = [
     (r"do you have a personality", ["I try to be friendly and helpful, but ultimately, I'm just a program running some code!"]),
     (r"are you human", ["No, I'm a chatbot designed to assist you with your inquiries."]),
     (r"do you sleep", ["No, I'm available 24/7 to help you whenever you need assistance."]),
-    (r"how old are you", ["I was created on 2024, so you could say I'm as old as my development."]),
+    (r"how old are you", ["I was created in 2024, so you could say I'm as old as my development."]),
     (r"what languages do you speak", ["I'm proficient in multiple languages. Feel free to communicate with me in any language you're comfortable with."]),
     (r"tell me a joke", ["Sure, here's one: Why don't scientists trust atoms? Because they make up everything!"]),
     (r"what's the weather like today", ["Where are you located? I can provide you with the current weather forecast."]),
