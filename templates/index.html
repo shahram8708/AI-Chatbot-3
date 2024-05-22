@@ -112,11 +112,10 @@
         .dots {
             cursor: pointer;
             display: inline-block;
-            padding: 0 10px;
+            padding: 0 2px;
             color: black;
             font-size: 20px;
         }
-
 
         .options {
             display: none;
@@ -190,11 +189,7 @@
 
             document.getElementById("chatbox").scrollTop = document.getElementById("chatbox").scrollHeight;
 
-            document.querySelectorAll('.dots').forEach(dot => {
-                dot.addEventListener('click', function () {
-                    this.nextElementSibling.style.display = 'block';
-                });
-            });
+            initializeOptions();
         });
 
         document.getElementById("user_input_form").onsubmit = function (event) {
@@ -206,7 +201,7 @@
 
             var combined_input = reply_input ? reply_input + " " + user_input : user_input;
 
-            chatbox.innerHTML += "<p class='user'>You: " + user_input + "<span class='dots'>...</span><span class='options'><button onclick='replyMessage(this)'>Reply</button><button onclick='deleteMessage(this)'>Delete</button></span></p><p class='timestamps'>" + currentTime + "</p>";
+            chatbox.innerHTML += "<p class='user'><span class='message'>You: " + user_input + "</span><span class='dots'>...</span><span class='options'><button onclick='replyMessage(this)'>Reply</button><button onclick='editMessage(this)'>Edit</button><button onclick='deleteMessage(this)'>Delete</button><button onclick='copyMessage(this)'>Copy</button><button onclick='playAudio(this)'>Audio</button></span></p><p class='timestamps'>" + currentTime + "</p>";
 
             document.getElementById("user_input").value = "";
             document.getElementById("reply_input").value = "";
@@ -226,32 +221,60 @@
                 .then(response => response.text())
                 .then(data => {
                     var botTime = new Date().toLocaleString();
-                    chatbox.innerHTML += "<p class='bot'>Chatbot: " + data + "<span class='dots'>...</span><span class='options'><button onclick='deleteMessage(this)'>Delete</button></span></p><p class='timestamp'>" + botTime + "</p>";
+                    chatbox.innerHTML += "<p class='bot'><span class='message'>Chatbot: " + data + "</span><span class='dots'>...</span><span class='options'><button onclick='deleteMessage(this)'>Delete</button><button onclick='copyMessage(this)'>Copy</button><button onclick='playAudio(this)'>Audio</button></span></p><p class='timestamp'>" + botTime + "</p>";
 
                     chatbox.scrollTop = chatbox.scrollHeight;
 
                     localStorage.setItem("chatHistory", chatbox.innerHTML);
 
-                    document.querySelectorAll('.dots').forEach(dot => {
-                        dot.addEventListener('click', function () {
-                            var optionsMenu = this.nextElementSibling;
-                            if (optionsMenu.style.display === 'block') {
-                                optionsMenu.style.display = 'none';
-                            } else {
-                                optionsMenu.style.display = 'block';
-                            }
-                        });
-                    });
-
+                    initializeOptions();
                 });
         };
 
         function replyMessage(element) {
-            var message = element.parentElement.parentElement.textContent.replace('You: ', '').replace('...', '').replace('ReplyDelete', '').trim();
+            var message = element.parentElement.parentElement.querySelector('.message').textContent.replace('You: ', '').replace('Chatbot: ', '').trim();
             document.getElementById('reply_input').value = message;
             document.getElementById('reply_info').textContent = "Replying to: " + message;
             document.getElementById('reply_info').style.display = "block";
             element.parentElement.style.display = 'none';
+        }
+
+        function editMessage(element) {
+            var messageElement = element.parentElement.parentElement.querySelector('.message');
+            var message = messageElement.textContent.replace('You: ', '').replace('Chatbot: ', '').trim();
+            var newMessage = prompt("Edit your message:", message);
+            if (newMessage !== null && newMessage !== '') {
+                var nextElement = element.parentElement.parentElement.nextElementSibling;
+                if (nextElement && nextElement.classList.contains('bot')) {
+                    nextElement.nextElementSibling.remove();
+                    nextElement.remove();
+                }
+
+                messageElement.textContent = (messageElement.textContent.startsWith('You: ') ? 'You: ' : 'Chatbot: ') + newMessage;
+                localStorage.setItem("chatHistory", document.getElementById("chatbox").innerHTML);
+
+                fetch("/chat", {
+                    method: "POST",
+                    body: new URLSearchParams({
+                        "user_input": newMessage
+                    }),
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    }
+                })
+                    .then(response => response.text())
+                    .then(data => {
+                        var botTime = new Date().toLocaleString();
+                        var chatbox = document.getElementById("chatbox");
+                        chatbox.innerHTML += "<p class='bot'><span class='message'>Chatbot: " + data + "</span><span class='dots'>...</span><span class='options'><button onclick='deleteMessage(this)'>Delete</button><button onclick='copyMessage(this)'>Copy</button><button onclick='playAudio(this)'>Audio</button></span></p><p class='timestamp'>" + botTime + "</p>";
+
+                        chatbox.scrollTop = chatbox.scrollHeight;
+
+                        localStorage.setItem("chatHistory", chatbox.innerHTML);
+
+                        initializeOptions();
+                    });
+            }
         }
 
         function deleteMessage(element) {
@@ -261,11 +284,43 @@
             localStorage.setItem("chatHistory", document.getElementById("chatbox").innerHTML);
         }
 
+        function copyMessage(element) {
+            var message = element.parentElement.parentElement.querySelector('.message').textContent.replace('You: ', '').replace('Chatbot: ', '').trim();
+            navigator.clipboard.writeText(message).then(function () {
+                alert("Message copied to clipboard!");
+            }, function (err) {
+                alert("Could not copy message: ", err);
+            });
+        }
+
+        function playAudio(element) {
+            var message = element.parentElement.parentElement.querySelector('.message').textContent.replace('You: ', '').replace('Chatbot: ', '').trim();
+            var speech = new SpeechSynthesisUtterance(message);
+            window.speechSynthesis.speak(speech);
+        }
+
         function clearChat() {
             document.getElementById("chatbox").innerHTML = "<p class='bot'>Welcome! How can I assist you today?</p><p class='timestamp'>" + new Date().toLocaleString() + "</p>";
             localStorage.removeItem("chatHistory");
         }
+
+        function initializeOptions() {
+            document.querySelectorAll('.dots').forEach(dot => {
+                dot.addEventListener('click', function () {
+                    var optionsMenu = this.nextElementSibling;
+                    if (optionsMenu.style.display === 'block') {
+                        optionsMenu.style.display = 'none';
+                    } else {
+                        document.querySelectorAll('.options').forEach(menu => menu.style.display = 'none');
+                        optionsMenu.style.display = 'block';
+                    }
+                });
+            });
+
+            document.querySelectorAll('.options').forEach(menu => menu.style.display = 'none');
+        }
     </script>
+
 </body>
 
 </html>
